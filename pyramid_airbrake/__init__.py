@@ -1,30 +1,35 @@
-from pyramid.httpexceptions import WSGIHTTPException
-from pyramid.settings import aslist
 from pyramid.tweens import EXCVIEW
+from pyramid_airbrake.airbrake.util import parse_pyramid_settings
+from pyramid_airbrake.handlers import get_handler
 
 import logging
 
 log = logging.getLogger(__name__)
 
-# TODO automatically handle prepending builtins and __builtin__ to dotted
-# names
+NAME = 'pyramid_airbrake'
+__version__ = '0.1'
+VERSION = __version__
+URL = 'http://wherever.example.com/'  # FIXME
 
 def airbrake_tween_factory(handler, registry):
-    get = config.registry.settings.get
+    settings = parse_pyramid_settings(registry.settings)
 
-    whitelist = get('airbrake.include', tuple())
-    blacklist = get('airbrake.exclude', tuple())
+    reporter = get_handler(settings)
+
+    get = reporter.settings.get
+    whitelist = get('include', tuple())
+    blacklist = get('exclude', tuple())
 
     def airbrake_tween(request):
         try:
             response = handler(request)
         except whitelist:
-            fire_airbrake()
+            reporter.report(request)
             raise
         except blacklist:
             raise
         except:
-            fire_airbrake()
+            reporter.report(request)
             raise
 
         # TODO do we need to check for HTTP exceptions that have been returned,
@@ -33,6 +38,7 @@ def airbrake_tween_factory(handler, registry):
         return response
 
     return airbrake_tween
+
 
 def includeme(config):
     """
@@ -46,13 +52,4 @@ def includeme(config):
     In case of conflict, entries in the whitelist take precedence.
 
     """
-    get = config.registry.settings.get
-
-    whitelist = aslist(get('airbrake.include', '')))
-    blacklist = aslist(get('airbrake.exclude',
-                           'pyramid.httpexceptions.WSGIHTTPException'))
-
-    config.registry.settings['airbrake.include'] = tuple(whitelist)
-    config.registry.settings['airbrake.exclude'] = tuple(blacklist)
-
-    config.add_tween('pyramid_airbrake.aibrake_tween_factory', under=EXCVIEW)
+    config.add_tween('pyramid_airbrake.airbrake_tween_factory', under=EXCVIEW)
