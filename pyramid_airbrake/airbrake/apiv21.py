@@ -3,11 +3,6 @@ import sys
 
 from xml.etree import ElementTree as ET
 
-from pyramid_airbrake.airbrake.util import parse_request_environment
-from pyramid_airbrake.airbrake.util import parse_request_params
-from pyramid_airbrake.airbrake.util import parse_request_session
-from pyramid_airbrake.airbrake.util import parse_request_view_identifier
-
 import pyramid_airbrake
 
 def derive_report(settings, request):
@@ -86,7 +81,7 @@ def derive_report(settings, request):
 
     # /notice/request/component ; required (if request)
     component = ET.SubElement(req, 'component')
-    component.text = parse_request_view_identifier(request)
+    component.text = inspect_view_identifier(settings, request)
 
     # /notice/request/action
     action = ET.SubElement(req, 'action')
@@ -100,16 +95,16 @@ def derive_report(settings, request):
             child.text = str(value)
 
     # /notice/request/params/var
-    params = ET.SubElement(req, 'params')
-    add_vars(params, parse_request_params(request))
-
     # /notice/request/session/var
-    session = ET.SubElement(req, 'session')
-    add_vars(session, parse_request_session(request))
-
     # /notice/request/cgi-data/var
-    cgi_data = ET.SubElement(req, 'cgi-data')
-    add_vars(cgi_data, parse_request_environment(request))
+    for node_name in ('params', 'session', 'cgi-data'):
+
+        inspector = settings['inspector.' + node_name]
+        vardict = inspector(settings, request)
+
+        if vardict:
+            node = ET.SubElement(req, node_name)
+            add_vars(node, vardict)
 
 
     # /notice/server-environment
@@ -117,7 +112,7 @@ def derive_report(settings, request):
 
     # /notice/server-environment/project-root
     project_root = ET.SubElement(server_env, 'project-root')
-    project_root.text = sys.path[0]  # TODO come up with something better
+    project_root.text = sys.path[0]  # TODO come up with something better?
 
     # /notice/server-environment/environment-name ; required
     env_name = ET.SubElement(server_env, 'environment-name')

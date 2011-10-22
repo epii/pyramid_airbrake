@@ -24,6 +24,8 @@ def listwise_resolve(names):
     return ret
 
 def parse_pyramid_settings(settings):
+    """Return settings prefixed with 'airbrake.', appropriately processed."""
+
     # first, filter the pyramid settings to just the ones for pyramid_airbrake
     new_settings = dict()
     f = lambda x: x.startswith(SETTINGS_PREFIX)
@@ -36,7 +38,7 @@ def parse_pyramid_settings(settings):
         if key not in new_settings:
             raise KeyError("Compulsory setting '{0}' not found.".format(key))
 
-    # resolve dotted python name settings
+    # second, resolve dotted python name settings
     whitelist = listwise_resolve(new_settings.get('include', ''))
     blacklist = listwise_resolve(new_settings.get('exclude',
                            'pyramid.httpexceptions.WSGIHTTPException'))
@@ -46,28 +48,71 @@ def parse_pyramid_settings(settings):
 
     return new_settings
 
-def parse_request_params(request):
-# A list of var elements describing request parameters from the query
-# string, POST body, routing, and other inputs.
+def inspect_params(settings, request):
+    """
+    Returns a dict of scrubbed GET and POST parameters from the request.
 
-    return {}
+    Any value whose key appears in the airbrake.protected_params setting is
+    changed to '<protected>'.
 
-def parse_request_session(request):
-# A list of var elements describing session variables from the request.
+    Note that this function implementation consults only request.params, not
+    request.GET or request.POST.
 
-    return {}
+    Override with `airbrake.inspector.params`.
 
-def parse_request_environment(request):
-# A list of var elements describing CGI variables from the request,
-# such as SERVER_NAME and REQUEST_URI.
+    """
+    params = dict()
+    protected = settings.get('protected_params', [])
 
-    return {}
+    for key, value in request.params.iteritems():
+        key = key.encode('utf-8')
+        value = value.encode('utf-8')
 
-def parse_request_view_identifier(request):
-# The component in which the error
-# occurred. In model-view-controller frameworks like Rails, this should be set to
-# the controller. Otherwise, this can be set to a route or other request category.
+        if key in protected:
+            params[key] = '<protected>'
+        else:
+            params[key] = value
+
+    return params
+
+def inspect_session(settings, request):
+    """Returns an empty dict; override with `airbrake.inspector.session`."""
+    return dict()
+
+DEFAULT_ENV_VARS = [
+    'HTTP_HOST',
+    'HTTP_REFERER',
+    'HTTP_USER_AGENT',
+    ]
+
+def inspect_cgi_data(settings, request):
+    """
+    Returns a dict of several environment variables.
+
+    Override the default environment variables with `airbrake.environment_vars`.
+
+    Override entirely with `airbrake.inspector.cgi_data'.
+
+    """
+    env = dict()
+    keys = settings.get('environment_vars', None) or DEFAULT_ENV_VARS
+
+    for key in keys:
+        if key in request.environ:
+            env[key] = request.environ[key]
+
+    return env
+
+def inspect_view_identifier(settings, request):
+    """
+    Return the name of the view.
+
+    However, Pyramid doesn't seem to make that easy, especially for traversal,
+    so for now any reasonably unique identifier will suffice.
+
+    """
     route = request.matched_route
     if route:
         return route.name
     return 'Not a route -- maybe traversal?'
+    # TODO
