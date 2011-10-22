@@ -3,6 +3,7 @@ import sys
 
 from xml.etree import ElementTree as ET
 
+from pyramid_airbrake.airbrake.util import inspect_view_identifier
 import pyramid_airbrake
 
 def derive_report(settings, request):
@@ -97,6 +98,7 @@ def derive_report(settings, request):
     # /notice/request/params/var
     # /notice/request/session/var
     # /notice/request/cgi-data/var
+    settings['inspector.cgi-data'] = settings['inspector.cgi_data']
     for node_name in ('params', 'session', 'cgi-data'):
 
         inspector = settings['inspector.' + node_name]

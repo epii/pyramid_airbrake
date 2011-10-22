@@ -6,8 +6,22 @@ import __builtin__
 
 SETTINGS_PREFIX = 'airbrake.'
 REQUIRED_SETTINGS = [
-        'api_key',
-        ]
+    'api_key',
+    ]
+LIST = 'list'
+SINGLE = 'single'
+RESOLVABLES = [
+    (LIST, 'include',
+        ''),
+    (LIST, 'exclude',
+        'pyramid.httpexceptions.WSGIHTTPException'),
+    (SINGLE, 'inspector.params',
+        'pyramid_airbrake.airbrake.util.inspect_params'),
+    (SINGLE, 'inspector.session',
+        'pyramid_airbrake.airbrake.util.inspect_session'),
+    (SINGLE, 'inspector.cgi_data',
+        'pyramid_airbrake.airbrake.util.inspect_cgi_data'),
+    ]
 
 resolver = DottedNameResolver(None)
 
@@ -39,12 +53,13 @@ def parse_pyramid_settings(settings):
             raise KeyError("Compulsory setting '{0}' not found.".format(key))
 
     # second, resolve dotted python name settings
-    whitelist = listwise_resolve(new_settings.get('include', ''))
-    blacklist = listwise_resolve(new_settings.get('exclude',
-                           'pyramid.httpexceptions.WSGIHTTPException'))
-
-    new_settings['include'] = tuple(whitelist)
-    new_settings['exclude'] = tuple(blacklist)
+    for plurality, key, default in RESOLVABLES:
+        value = new_settings.get(key, None) or default
+        if plurality == LIST:
+            new_settings[key] = tuple(listwise_resolve(value))
+        else:
+            # XXX need to check for empty default?
+            new_settings[key] = resolver.resolve(value)
 
     return new_settings
 
