@@ -1,21 +1,27 @@
 from pyramid.httpexceptions import WSGIHTTPException
+from pyramid.settings import asbool
 from pyramid.settings import aslist
 from pyramid.util import DottedNameResolver
 
 import __builtin__
 
 SETTINGS_PREFIX = 'airbrake.'
+BOOL = 'bool'
+DOTTED = 'dotted'  # dotted python name; will be resolved to an object
+DOTTED_LIST = 'dotted_list'  # list of dotted python names
+STR = 'str'
+STR_LIST = 'str_list'  # space and/or newline seperated list XXX I think
+
+RESOLVABLE_SETTINGS = [
+    (BOOL, 'use_ssl', 'yes'),
+    (DOTTED_LIST, 'include', ''),
+    (DOTTED_LIST, 'exclude', 'pyramid.httpexceptions.WSGIHTTPException'),
+    (DOTTED, 'inspector.params', 'pyramid_airbrake.util.inspect_params'),
+    (DOTTED, 'inspector.session', 'pyramid_airbrake.util.inspect_session'),
+    (DOTTED, 'inspector.cgi_data', 'pyramid_airbrake.util.inspect_cgi_data'),
+    ]
 REQUIRED_SETTINGS = [
     'api_key',
-    ]
-LIST = 'list'
-SINGLE = 'single'
-RESOLVABLE_SETTINGS = [
-    (LIST, 'include', ''),
-    (LIST, 'exclude', 'pyramid.httpexceptions.WSGIHTTPException'),
-    (SINGLE, 'inspector.params', 'pyramid_airbrake.util.inspect_params'),
-    (SINGLE, 'inspector.session', 'pyramid_airbrake.util.inspect_session'),
-    (SINGLE, 'inspector.cgi_data', 'pyramid_airbrake.util.inspect_cgi_data'),
     ]
 HANDLER_KEYWORDS = {
     'blocking': 'pyramid_airbrake.handlers.blocking.BlockingHandler',
@@ -53,14 +59,22 @@ def parse_pyramid_settings(settings):
             raise KeyError("Compulsory setting '{0}' not found.".format(key))
 
     # second, resolve dotted python name settings
-    for plurality, key, default in RESOLVABLE_SETTINGS:
+    for kind, key, default in RESOLVABLE_SETTINGS:
         value = new_settings.get(key, None) or default
-        if plurality == LIST:
-            new_settings[key] = tuple(listwise_resolve(value))
-        elif value:
-            new_settings[key] = resolver.resolve(value)
-        else:
-            new_settings[key] = None
+
+        if kind == BOOL:
+            value = asbool(value)
+        elif kind == DOTTED_LIST:
+            value = tuple(listwise_resolve(value))
+        elif kind == DOTTED:
+            if value:
+                value = resolver.resolve(value)
+            else:
+                value = None
+        elif kind == STR_LIST:
+            value = aslist(value)
+
+        new_settings[key] = value
 
     # handler takes either a keyword *or* a dotted name
     handler = new_settings.get('handler', None) or HANDLER_DEFAULT
@@ -86,6 +100,7 @@ def inspect_params(settings, request):
     protected = settings.get('protected_params', [])
 
     for key, value in request.params.iteritems():
+        # TODO confirm the best way to handle Unicode in XML
         key = key.encode('utf-8')
         value = value.encode('utf-8')
 
