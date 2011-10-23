@@ -3,7 +3,7 @@ import sys
 
 from xml.etree import ElementTree as ET
 
-from pyramid_airbrake.airbrake.util import inspect_view_identifier
+from pyramid_airbrake.util import inspect_view_identifier
 import pyramid_airbrake
 
 def derive_report(settings, request):
@@ -54,9 +54,9 @@ def derive_report(settings, request):
     err_class.text = cls.__name__
 
     # /notice/error/message
-    if exc.message:
+    if str(exc):
         message = ET.SubElement(error, 'message')
-        message.text = str(exc.message)
+        message.text = str(exc)
 
     # /notice/error/backtrace/line ; required
     backtrace = ET.SubElement(error, 'backtrace')

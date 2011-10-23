@@ -10,18 +10,18 @@ REQUIRED_SETTINGS = [
     ]
 LIST = 'list'
 SINGLE = 'single'
-RESOLVABLES = [
-    (LIST, 'include',
-        ''),
-    (LIST, 'exclude',
-        'pyramid.httpexceptions.WSGIHTTPException'),
-    (SINGLE, 'inspector.params',
-        'pyramid_airbrake.airbrake.util.inspect_params'),
-    (SINGLE, 'inspector.session',
-        'pyramid_airbrake.airbrake.util.inspect_session'),
-    (SINGLE, 'inspector.cgi_data',
-        'pyramid_airbrake.airbrake.util.inspect_cgi_data'),
+RESOLVABLE_SETTINGS = [
+    (LIST, 'include', ''),
+    (LIST, 'exclude', 'pyramid.httpexceptions.WSGIHTTPException'),
+    (SINGLE, 'inspector.params', 'pyramid_airbrake.util.inspect_params'),
+    (SINGLE, 'inspector.session', 'pyramid_airbrake.util.inspect_session'),
+    (SINGLE, 'inspector.cgi_data', 'pyramid_airbrake.util.inspect_cgi_data'),
     ]
+HANDLER_KEYWORDS = {
+    'blocking': 'pyramid_airbrake.handlers.blocking.BlockingHandler',
+    'dummy': 'pyramid_airbrake.handlers.dummy.DummyHandler',
+    }
+HANDLER_DEFAULT = 'dummy'
 
 resolver = DottedNameResolver(None)
 
@@ -53,13 +53,19 @@ def parse_pyramid_settings(settings):
             raise KeyError("Compulsory setting '{0}' not found.".format(key))
 
     # second, resolve dotted python name settings
-    for plurality, key, default in RESOLVABLES:
+    for plurality, key, default in RESOLVABLE_SETTINGS:
         value = new_settings.get(key, None) or default
         if plurality == LIST:
             new_settings[key] = tuple(listwise_resolve(value))
-        else:
-            # XXX need to check for empty default?
+        elif value:
             new_settings[key] = resolver.resolve(value)
+        else:
+            new_settings[key] = None
+
+    # handler takes either a keyword *or* a dotted name
+    handler = new_settings.get('handler', None) or HANDLER_DEFAULT
+    handler = HANDLER_KEYWORDS.get(handler, handler)
+    new_settings['handler'] = resolver.resolve(handler)
 
     return new_settings
 

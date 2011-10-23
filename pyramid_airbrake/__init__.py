@@ -1,14 +1,14 @@
 from pyramid.tweens import EXCVIEW
-from pyramid_airbrake.airbrake.util import parse_pyramid_settings
 from pyramid_airbrake.handlers import get_handler
+from pyramid_airbrake.util import parse_pyramid_settings
 
 import logging
 
 log = logging.getLogger(__name__)
 
-NAME = 'pyramid_airbrake'
 __version__ = '0.1'
 VERSION = __version__
+NAME = 'pyramid_airbrake'
 URL = 'http://wherever.example.com/'  # FIXME
 
 def airbrake_tween_factory(handler, registry):

@@ -35,7 +35,7 @@ except IOError:
 
 setup(
     name='pyramid_airbrake',
-    version='0.1',
+    version='0.1alpha',
     description='',
     long_description=README,
     author='epii',
