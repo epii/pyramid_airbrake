@@ -7,6 +7,10 @@ log = logging.getLogger(__name__)
 
 AIRBRAKE_URL_TMPL = '{scheme}://hoptoadapp.com/notifier_api/v2/notices'
 
+# XXX oh my goodness, urllib2 does not verify certificates, nor does it provide
+# an easy way to do so
+# SSL is useless until a work-around is implemented.
+
 def submit_payload(settings, payload, timeout=5):
     """
     Send an XML notification to Airbrake.
