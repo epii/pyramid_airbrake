@@ -1,3 +1,4 @@
+from pyramid_airbrake.airbrake.submit import create_http_pool
 from pyramid_airbrake.airbrake.submit import submit_payload
 
 import logging
@@ -40,15 +41,14 @@ class BaseHandler(object):
         # not guranteed by the Python spec; so set these here because Handler
         # classes may require thread safety
         self.notification_url = settings['notification_url']
-        self.timeout = settings['timeout']
-        self.use_ssl = settings['use_ssl']
+        self.http_pool = create_http_pool(settings)
 
     def _submit(self, payload):
         """Safely submits the XML `payload` to Airbrake; returns True on
         success and False on error."""
 
         try:
-            result = submit_payload(payload, self.timeout, self.use_ssl,
+            result = submit_payload(payload, self.http_pool,
                                     self.notification_url)
         except BaseException as exc:
             # this should only fire if the code logic broke; HTTP and
@@ -64,10 +64,10 @@ class BaseHandler(object):
 
         return result
 
-    def report(self, request):
+    def report(self, payload):
         """
-        Prepare and submit a report based on the passed request and the current
-        exception.
+        Submit the XML `payload` to its intended destination, thus reporting
+        the error.
 
         Must be implemented by subclasses.
 

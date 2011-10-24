@@ -1,5 +1,5 @@
+from urlparse import urlparse
 import logging
-import urllib2
 
 import urllib3
 
@@ -7,13 +7,21 @@ import pyramid_airbrake
 
 log = logging.getLogger(__name__)
 
-AIRBRAKE_URL_TMPL = '{scheme}://hoptoadapp.com/notifier_api/v2/notices'
+def create_http_pool(settings):
+    url = settings['notification_url']
+    maxsize = settings['threaded.threads']  # sort of a lie, potentially
+    timeout = settings['timeout']
 
-# XXX oh my goodness, urllib2 does not verify certificates, nor does it provide
-# an easy way to do so
-# SSL is useless until a work-around is implemented.
+    if settings['use_ssl']:
+        ca_certs = settings['ca_certs']
+        return urllib3.connection_from_url(url, maxsize=maxsize,
+                                           timeout=timeout,
+                                           cert_reqs='CERT_REQUIRED',
+                                           ca_certs=ca_certs)
 
-def submit_payload(payload, timeout, use_ssl, notification_url=None):
+    return urllib3.connection_from_url(url, maxsize=maxsize, timeout=timeout)
+
+def submit_payload(payload, http_pool, notification_url):
     """
     Send an XML notification to Airbrake.
 
@@ -26,50 +34,62 @@ def submit_payload(payload, timeout, use_ssl, notification_url=None):
 
     """
     headers = {'Content-Type': 'text/xml'}
-
-    if notification_url:
-        use_ssl = notification_url.startswith('https://')
-    else:
-        scheme = 'https' if use_ssl else 'http'
-        notification_url = AIRBRAKE_URL_TMPL.format(scheme=scheme)
-
-    req = urllib2.Request(notification_url, payload, headers)
+    path = urlparse(notification_url).path
 
     try:
-        response = urllib2.urlopen(req, timeout=timeout)
+        response = http_pool.urlopen('POST', path, body=payload, headers=headers)
+
+    # TODO make these error messages more, uh, useful
+    except urllib3.SSLError as exc:
+        log.error("SSL Error.  Error message: '{0}'"
+                  .format(exc))
+        return False
+
+    except urllib3.MaxRetryError as exc:
+        log.error("Max Retries hit.  Error message: '{0}'"
+                  .format(exc))
+        return False
+
+    except urllib3.TimeoutError as exc:
+        log.error("Max Retries hit.  Error message: '{0}'"
+                  .format(exc))
+        return False
+
+    status = response.status
+    use_ssl = (http_pool.scheme == 'https')
+
+    if status == 200:
+        # submission successful
         return True
-        # should we check that this is 200 OK (as opposed to some other 2xx)?
 
-    except urllib2.HTTPError as exc:
-        status = exc.code
+    elif status == 403 and use_ssl:
+        # the account is not authorized to use SSL
+        log.error("Airbrake submission returned code 403 on SSL request.  "
+                  "The Airbrake account is probably not authorized to use "
+                  "SSL.  Error message: '{0}'"
+                  .format(response.data))
 
-        if status == 403 and use_ssl:
-            # the account is not authorized to use SSL
-            log.error("Airbrake submission returned code 403 on SSL request.  "
-                      "The Airbrake account is probably not authorized to use "
-                      "SSL.  Error message: '{0}'"
-                      .format(exc.read()))
+    elif status == 403 and not use_ssl:
+        # the spec says 403 should only occur on SSL requests made by
+        # accounts without SSL authorization, so this should never fire
+        log.error("Airbrake submission returned code 403 on non-SSL "
+                  "request. This is unexpected.  Error message: '{0}'"
+                  .format(response.data))
 
-        if status == 403 and not use_ssl:
-            # the spec says 403 should only occur on SSL requests made by
-            # accounts without SSL authorization, so this should never fire
-            log.error("Airbrake submission returned code 403 on non-SSL "
-                      "request. This is unexpected.  Error message: '{0}'"
-                      .format(exc.read()))
+    elif status == 422:
+        # submitted notice was invalid; probably bad XML payload or API key
+        log.error("Airbrake submission returned code 422.  Check API key. "
+                  "May also be an error with {0}.  Error message: '{1}'"
+                  .format(pyramid_airbrake.NAME, response.data))
 
-        if status == 422:
-            # submitted notice was invalid; probably bad XML payload or API key
-            log.error("Airbrake submission returned code 422.  Check API key. "
-                      "May also be an error with {0}.  Error message: '{1}'"
-                      .format(pyramid_airbrake.NAME, exc.read()))
+    elif status == 500:
+        log.error("Airbrake submission returned code 500.  This is a "
+                  "problem at Airbrake's end.  Error message: '{0}'"
+                  .format(response.data))
 
-        if status == 500:
-            log.error("Airbrake submission returned code 500.  This is a "
-                      "problem at Airbrake's end.  Error message: '{0}'"
-                      .format(exc.read()))
-
-    except urllib2.URLError as exc:
-        log.error("Unable to connect to Airbreak; URL: {0}; Error: '{1}'"
-                  .format(notification_url, exc.reason))
+    else:
+        log.error("Airbrake submission returned code '{0}', wich is not in "
+                  "the Airbrake API spec.  Very strange.  Error message: '{1}'"
+                  .format(status, response.data))
 
     return False

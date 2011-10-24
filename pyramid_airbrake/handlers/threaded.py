@@ -8,7 +8,6 @@ from threadpool import NoResultsPending
 from threadpool import ThreadPool
 from threadpool import WorkRequest
 
-from pyramid_airbrake.airbrake.submit import submit_payload
 from pyramid_airbrake.handlers import BaseHandler
 
 log = logging.getLogger(__name__)

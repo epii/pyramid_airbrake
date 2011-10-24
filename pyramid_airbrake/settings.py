@@ -1,3 +1,6 @@
+import os.path
+from urlparse import urlparse
+
 from pyramid.httpexceptions import WSGIHTTPException
 from pyramid.settings import asbool
 from pyramid.settings import aslist
@@ -24,7 +27,8 @@ RESOLVABLE_SETTINGS = [
     (NUMERAL, 'threaded.threads', '4'),
     (NUMERAL, 'threaded.poll_interval', '1'),  # secs
     (NUMERAL, 'timeout', '2'),  # secs
-    (STR, 'notification_url', ''),  # default specified in airbrake.submit
+    (STR, 'notification_url', ''),  # default specified as AIRBRAKE_URL_TMPL
+    (STR, 'ca_certs', '/etc/ssl/certs/ca-certificates.crt'),
     ]
 REQUIRED_SETTINGS = [
     'api_key',
@@ -35,6 +39,7 @@ HANDLER_KEYWORDS = {
     'threaded': 'pyramid_airbrake.handlers.threaded.ThreadedHandler',
     }
 HANDLER_DEFAULT = 'dummy'
+AIRBRAKE_URL_TMPL = '{scheme}://hoptoadapp.com/notifier_api/v2/notices'
 
 resolver = DottedNameResolver(None)
 
@@ -50,24 +55,24 @@ def listwise_resolve(names):
 
     return ret
 
-def parse_pyramid_settings(settings):
+def parse_pyramid_settings(pyramid_settings):
     """Return settings prefixed with 'airbrake.', appropriately processed."""
 
     # first, filter the pyramid settings to just the ones for pyramid_airbrake
-    new_settings = dict()
+    settings = dict()
     f = lambda x: x.startswith(SETTINGS_PREFIX)
 
-    for key in filter(f, settings.keys()):
+    for key in filter(f, pyramid_settings.keys()):
         newkey = key[len(SETTINGS_PREFIX):]
-        new_settings[newkey] = settings[key]
+        settings[newkey] = pyramid_settings[key]
 
     for key in REQUIRED_SETTINGS:
-        if key not in new_settings:
+        if key not in settings:
             raise KeyError("Compulsory setting '{0}' not found.".format(key))
 
     # second, resolve dotted python name settings
     for kind, key, default in RESOLVABLE_SETTINGS:
-        value = new_settings.get(key, None) or default
+        value = settings.get(key, None) or default
 
         if kind == BOOL:
             value = asbool(value)
@@ -87,11 +92,26 @@ def parse_pyramid_settings(settings):
         elif kind == STR_LIST:
             value = aslist(value)
 
-        new_settings[key] = value
+        settings[key] = value
 
     # handler takes either a keyword *or* a dotted name
-    handler = new_settings.get('handler', None) or HANDLER_DEFAULT
+    handler = settings.get('handler', None) or HANDLER_DEFAULT
     handler = HANDLER_KEYWORDS.get(handler, handler)
-    new_settings['handler'] = resolver.resolve(handler)
+    settings['handler'] = resolver.resolve(handler)
 
-    return new_settings
+    # the use_ssl option is only applied if the notification_url is unspecified
+    # otherwise, it is overidden by whether notification_url uses https
+    if settings['notification_url']:
+        url = settings['notification_url']
+        settings['use_ssl'] = (urlparse(url).scheme == 'https')
+    else:
+        scheme = 'https' if settings['use_ssl'] else 'http'
+        url = AIRBRAKE_URL_TMPL.format(scheme=scheme)
+        settings['notification_url'] = url
+
+    if settings['use_ssl'] and not os.path.isfile(settings['ca_certs']):
+        raise ValueError("Set to use TLS/SSL but the ca_certs setting ('{0}') "
+                         "does not appear to point to a file."
+                         .format(settings['ca_certs']))
+
+    return settings
