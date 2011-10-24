@@ -1,6 +1,6 @@
 from pyramid.tweens import EXCVIEW
 from pyramid_airbrake.handlers import get_handler
-from pyramid_airbrake.util import parse_pyramid_settings
+from pyramid_airbrake.settings import parse_pyramid_settings
 
 import logging
 
@@ -14,11 +14,13 @@ URL = 'http://wherever.example.com/'  # FIXME
 def airbrake_tween_factory(handler, registry):
     settings = parse_pyramid_settings(registry.settings)
 
+    if not settings['enabled']:
+        return handler
+
     reporter = get_handler(settings)
 
-    get = reporter.settings.get
-    whitelist = get('include', tuple())
-    blacklist = get('exclude', tuple())
+    whitelist = settings['include']
+    blacklist = settings['exclude']
 
     def airbrake_tween(request):
         try:
