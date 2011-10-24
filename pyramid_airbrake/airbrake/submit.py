@@ -1,6 +1,8 @@
 import logging
 import urllib2
 
+import urllib3
+
 import pyramid_airbrake
 
 log = logging.getLogger(__name__)
@@ -11,24 +13,23 @@ AIRBRAKE_URL_TMPL = '{scheme}://hoptoadapp.com/notifier_api/v2/notices'
 # an easy way to do so
 # SSL is useless until a work-around is implemented.
 
-def submit_payload(settings, payload, timeout=5):
+def submit_payload(payload, timeout, use_ssl, notification_url=None):
     """
     Send an XML notification to Airbrake.
 
     The setting `airbrake.use_ssl` controls whether an SSL connection is
     attempted and defaults to True.
 
-    The setting `airbrake.notification_url`
+    The setting `airbrake.notification_url` ...
+
+    NB: This function must be thread-safe.
 
     """
     headers = {'Content-Type': 'text/xml'}
 
-    notification_url = settings.get('notification_url', None)
-
     if notification_url:
         use_ssl = notification_url.startswith('https://')
     else:
-        use_ssl = settings.get('use_ssl', True)
         scheme = 'https' if use_ssl else 'http'
         notification_url = AIRBRAKE_URL_TMPL.format(scheme=scheme)
 

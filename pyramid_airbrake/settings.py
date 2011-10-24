@@ -9,17 +9,22 @@ SETTINGS_PREFIX = 'airbrake.'
 BOOL = 'bool'
 DOTTED = 'dotted'  # dotted python name; will be resolved to an object
 DOTTED_LIST = 'dotted_list'  # list of dotted python names
+NUMERAL = 'numeral'
 STR = 'str'
 STR_LIST = 'str_list'  # space and/or newline seperated list XXX I think
 
 RESOLVABLE_SETTINGS = [
     (BOOL, 'enabled', 'yes'),
-    (BOOL, 'use_ssl', 'yes'),
+    (BOOL, 'use_ssl', 'yes'),  # ignored if notification_url is set
     (DOTTED_LIST, 'include', ''),
     (DOTTED_LIST, 'exclude', 'pyramid.httpexceptions.WSGIHTTPException'),
     (DOTTED, 'inspector.params', 'pyramid_airbrake.util.inspect_params'),
     (DOTTED, 'inspector.session', 'pyramid_airbrake.util.inspect_session'),
     (DOTTED, 'inspector.cgi_data', 'pyramid_airbrake.util.inspect_cgi_data'),
+    (NUMERAL, 'threaded.threads', '4'),
+    (NUMERAL, 'threaded.poll_interval', '1'),  # secs
+    (NUMERAL, 'timeout', '2'),  # secs
+    (STR, 'notification_url', ''),  # default specified in airbrake.submit
     ]
 REQUIRED_SETTINGS = [
     'api_key',
@@ -73,6 +78,12 @@ def parse_pyramid_settings(settings):
                 value = resolver.resolve(value)
             else:
                 value = None
+        elif kind == NUMERAL:
+            try:
+                value = int(value)
+            except ValueError:
+                raise ValueError("Value for setting '{0}' must be a numeral, "
+                                 "not '{1}'.".format(key, value))
         elif kind == STR_LIST:
             value = aslist(value)
 

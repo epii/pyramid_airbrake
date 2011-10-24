@@ -56,6 +56,8 @@ setup(
     install_requires=[
     'pyramid>=1.2',
     'pytest',
+    'threadpool',
+    'urllib3',
     ],
     packages=find_packages(),
 ###    include_package_data=True,
