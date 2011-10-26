@@ -30,15 +30,11 @@ Installation
 ------------
 
 Until ``pyramid_airbrake`` is listed on PyPI, your best bet is to clone the
-source via git then, from your ``virtualenv``, run:
-
-.. code-block::
+source via git then, from your ``virtualenv``, run::
 
    $ pip install -e path/to/pyramid_aibrake
 
-Updating to the latest version is then as simple as:
-
-.. code-block::
+Updating to the latest version is then as simple as::
 
    $ cd path/to/pyramid_airbrake
    $ git pull
@@ -49,19 +45,13 @@ Setup
 
 Once ``pyramid_airbrake`` is installed, you must use the ``config.include``
 mechanism to include it into your Pyramid project's configuration.  In your
-Pyramid project's ``__init__.py``:
-
-.. code-block:: python
-   :linenos:
+Pyramid project's ``__init__.py``::
 
    config = Configurator(.....)
    config.include('pyramid_airbrake')
 
 Alternately you can use the ``pyramid.includes`` configuration value in your
-``.ini`` file:
-
-.. code-block:: ini
-   :linenos:
+``.ini`` file::
 
    [app:myapp]
    pyramid.includes = pyramid_aibrake
@@ -77,10 +67,7 @@ Configuration
 For ``pyramid_airbrake`` to be able to send error reports to Airbrake_, it is
 necessary to have an Airbrake_ account and obtain an Airbrake API key.  This
 key must be passed to ``pyramid_airbrake`` through the ``airbrake.api_key``
-configuration setting in your ``.ini`` file:
-
-.. code-block:: ini
-   :linenos:
+configuration setting in your ``.ini`` file::
 
    [app:myapp]
    airbrake.api_key = 0123456789abcdefz0123456789abcde
@@ -92,10 +79,7 @@ By default, ``pyramid_aibrake`` will attempt to send error reports to Airbrake
 over an SSL/TLS connection to protect their confidentiality.  This is the
 recommended mode of operation.  However, free Airbrake accounts do not permit
 reports to be submitted securely.  If you have a free account, you will need to
-set the configuration setting ``airbrake.use_ssl`` to ``false``.
-
-.. code-block:: ini
-   :linenos:
+set the configuration setting ``airbrake.use_ssl`` to ``false``::
 
    [app:myapp]
    airbrake.use_ssl = false
