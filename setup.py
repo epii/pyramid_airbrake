@@ -24,7 +24,10 @@ class PyTest(Command):
             if errno == ENOENT:
                 print "Probably could not find py.test in path; have you run " \
                       "'python setup.py <develop|install>' ?"
-            ret_val = 1
+            else:
+                print ("Unexpected error calling py.test: errno {0}: {1}"
+                       .format(errno, strerror))
+            ret_val = errno or 1
         raise SystemExit(ret_val)
 
 README_PATH = os.path.join(HERE, 'README.rst')
@@ -35,7 +38,7 @@ except IOError:
 
 setup(
     name='pyramid_airbrake',
-    version='0.1alpha',
+    version='0.2',
     description='',
     long_description=README,
     author='epii',
@@ -47,8 +50,6 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
-###        "Programming Language :: Python :: 3",
-###        "Programming Language :: Python :: 3.2",
         "Framework :: Pylons",
         "Topic :: Internet :: WWW/HTTP :: WSGI",
         "License :: OSI Approved :: MIT License",
@@ -62,5 +63,5 @@ setup(
     packages=find_packages(),
 ###    include_package_data=True,
     zip_safe=False,
-    cmdclass = {'test': PyTest}
+    cmdclass={'test': PyTest}
     )
