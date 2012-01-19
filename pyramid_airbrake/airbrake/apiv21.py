@@ -101,9 +101,11 @@ def derive_report(settings, request):
     settings['inspector.cgi-data'] = settings['inspector.cgi_data']
     for node_name in ('params', 'session', 'cgi-data'):
 
-        inspector = settings['inspector.' + node_name]
-        vardict = inspector(settings, request)
+        inspector = settings.get('inspector.' + node_name)
+        if not inspector:
+            continue
 
+        vardict = inspector(settings, request)
         if vardict:
             node = ET.SubElement(req, node_name)
             add_vars(node, vardict)

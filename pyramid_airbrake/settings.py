@@ -23,7 +23,7 @@ SETTINGS = [
     (BOOL, 'use_ssl', 'yes'),  # ignored if notification_url is set
     (DOTTED, 'inspector.cgi_data', 'pyramid_airbrake.util.inspect_cgi_data'),
     (DOTTED, 'inspector.params', 'pyramid_airbrake.util.inspect_params'),
-    (DOTTED, 'inspector.session', 'pyramid_airbrake.util.inspect_session'),
+    (DOTTED, 'inspector.session', ''),
     (DOTTED_LIST, 'include', ''),
     (DOTTED_LIST, 'exclude', 'pyramid.httpexceptions.WSGIHTTPException'),
     (NUMERAL, 'threaded.poll_interval', 1),  # secs
@@ -32,6 +32,7 @@ SETTINGS = [
     (STR, 'api_key', ''),
     (STR, 'ca_certs', '/etc/ssl/certs/ca-certificates.crt'),
     (STR, 'notification_url', ''),  # default specified as AIRBRAKE_URL_TMPL
+    (STR_LIST, 'default_inspector.protected_params', []),
     ]
 REQUIRED_SETTINGS = [
     'api_key',

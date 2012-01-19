@@ -16,23 +16,15 @@ def inspect_params(settings, request):
 
     """
     params = dict()
-    protected = settings.get('protected_params', [])
+    protected = settings.get('default_inspector.protected_params') or []
 
     for key, value in request.params.iteritems():
-        # TODO confirm the best way to handle Unicode in XML
-        key = key.encode('utf-8')
-        value = value.encode('utf-8')
-
         if key in protected:
             params[key] = '<protected>'
         else:
             params[key] = value
 
     return params
-
-def inspect_session(settings, request):
-    """Returns an empty dict; override with `airbrake.inspector.session`."""
-    return dict()
 
 DEFAULT_ENV_VARS = [
     'HTTP_HOST',
