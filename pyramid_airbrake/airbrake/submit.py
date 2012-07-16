@@ -40,17 +40,17 @@ def submit_payload(payload, http_pool, notification_url):
         response = http_pool.urlopen('POST', path, body=payload, headers=headers)
 
     # TODO make these error messages more, uh, useful
-    except urllib3.SSLError as exc:
+    except urllib3.exceptions.SSLError as exc:
         log.error("SSL Error.  Error message: '{0}'"
                   .format(exc))
         return False
 
-    except urllib3.MaxRetryError as exc:
+    except urllib3.exceptions.MaxRetryError as exc:
         log.error("Max Retries hit.  Error message: '{0}'"
                   .format(exc))
         return False
 
-    except urllib3.TimeoutError as exc:
+    except urllib3.exceptions.TimeoutError as exc:
         log.error("Max Retries hit.  Error message: '{0}'"
                   .format(exc))
         return False
