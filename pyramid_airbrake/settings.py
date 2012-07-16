@@ -46,7 +46,7 @@ HANDLER_KEYWORDS = {
     'threaded': 'pyramid_airbrake.handlers.threaded.ThreadedHandler',
     }
 HANDLER_DEFAULT = 'dummy'
-AIRBRAKE_URL_TMPL = '{scheme}://hoptoadapp.com/notifier_api/v2/notices'
+AIRBRAKE_URL_TMPL = '{scheme}://api.airbrake.io/notifier_api/v2/notices'
 
 resolver = DottedNameResolver(None)
 
